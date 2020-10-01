@@ -67,12 +67,7 @@ class Agent {
 
 			}
 
-			var output = neat.population[this.index].activate([shortestDistLeft, shortestDistRight]);
-			if (output > 0.8) { //turn right
-				this.rotation++;
-			} else { // turn left
-				this.rotation--;
-			}
+			neat.population[this.index].activate([shortestDistLeft, shortestDistRight]) > 0.8 ? this.rotation++ : this.rotation--;
 
 		}
 

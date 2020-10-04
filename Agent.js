@@ -1,72 +1,83 @@
 class Agent {
-	constructor(i) {
-		this.isTouchingGround = false; // back Weel
+	constructor(index) {
+		this.position = createVector(25, CANVAS_HEIGHT / 2);
+		this.direction = createVector(0, 0);
+		this.leftAntenna;
+		this.rightAntenna;
+		this.rotation = 0;
+		this.radius = 30;
 		this.alive = true;
-		this.index = i;
+		this.index = index;
+		this.score = 0;
+		this.antennaLength = 200;
 	}
-
-	addToWorld() {
-		this.rect = Bodies.rectangle(300, 300, 100, 40, {
-			id: this.index * 3,
-			collisionFilter: {
-				group: -1
-			}
-		});
-		this.circle = Bodies.circle(260, 320, 20, {
-			id: this.index * 3 + 1,
-			friction: 1,
-			collisionFilter: {
-				group: -1
-			}
-		});
-		this.circle2 = Bodies.circle(340, 320, 20, {
-			id: this.index * 3 + 2,
-			friction: 1,
-			collisionFilter: {
-				group: -1
-			}
-		});
-		this.constr1 = Matter.Constraint.create({
-			bodyA: this.rect,
-			pointA: { x: -40, y: 20 }, // offset!
-			bodyB: this.circle,
-			stiffness: 1,
-			length: 0
-		});
-		this.constr2 = Matter.Constraint.create({
-			bodyA: this.rect,
-			pointA: { x: 40, y: 20 },
-			bodyB: this.circle2,
-			stiffness: 1,
-			length: 0
-		})
-
-		World.add(world, [
-			this.rect, this.circle, this.circle2, this.constr1, this.constr2
-		]);
-	}
-
-	run() {
+	collide(lines) {
 		if (this.alive) {
-			if (this.rect.position.x < 0 || this.rect.position.x > 11500 || this.rect.position.y > 1000) { this.kill(); } else {
-				var vertex1 = verticies[Math.round((this.rect.position.x - 250) / 200) + 3];
-				var vertex2 = verticies[Math.round((this.rect.position.x - 250) / 200) + 4];
-				var m = (vertex1.y - vertex2.y) / (vertex2.x - vertex1.x);
-				var output = neat.population[this.index].activate([this.rect.speed / 100, Math.sin(this.rect.angle), this.isTouchingGround, m]);
-				if (output[0] > 0.5 && this.circle.angularVelocity < 4) Matter.Body.setAngularVelocity(this.circle, this.circle.angularVelocity += 0.2);
-				if (output[1] > 0.5 && this.circle.angularVelocity > -4) Matter.Body.setAngularVelocity(this.circle, this.circle.angularVelocity -= 0.2);
+			this.score++;
+			// collider
+			for (var i in lines) {
+				if (collideLineCircleVector(lines[i][0], lines[i][1], this.position, this.radius)) {
+					this.alive = false;
+					agentsAlive--;
+					// give Score to Brain
+					neat.population[this.index].score = this.position.x;
+					deathPoints.push(this.position);
+					break;
+				} else if (time > 1100) {
+					this.alive = false;
+					agentsAlive--;
+					neat.population[this.index].score = this.position.x;
+					break;
+				}
 			}
 		}
 	}
 
-	kill() {
+	move(lines) {
+		this.direction.x = cos(this.rotation);
+		this.direction.y = sin(this.rotation);
+
 		if (this.alive) {
-			neat.population[this.index].score = this.rect.position.x;
-			this.alive = false;
-			World.remove(world, [
-				this.rect, this.circle, this.circle2, this.constr1, this.constr2
-			]);
-			agentsAlive--;
+			this.position = p5.Vector.add(this.position, this.direction);
+
+			this.leftAntenna = createVector(cos(this.rotation - 35) * this.antennaLength + this.position.x, sin(this.rotation - 25) * this.antennaLength + this.position.y);
+			this.rightAntenna = createVector(cos(this.rotation + 35) * this.antennaLength + this.position.x, sin(this.rotation + 25) * this.antennaLength + this.position.y);
+
+			// check if the Antenna is colliding with line and then calculate the distance
+			var shortestDistLeft = 1;
+			var shortestDistRight = 1;
+
+			for (var i in lines) {
+
+				var distanceLeft = 1;
+				if (collideLineLineVector(lines[i][0], lines[i][1], this.position, this.leftAntenna)) {
+					var collisionPoint = getIntersectionPoint(lines[i][0], lines[i][1], this.position, this.leftAntenna);
+					circle(collisionPoint.x, collisionPoint.y, 5);
+					distanceLeft = this.position.dist(collisionPoint) / this.antennaLength;
+					shortestDistLeft = min(distanceLeft, shortestDistLeft);
+				}
+
+				var distanceRight = 1;
+				if (collideLineLineVector(lines[i][0], lines[i][1], this.position, this.rightAntenna)) {
+					var collisionPoint = getIntersectionPoint(lines[i][0], lines[i][1], this.position, this.rightAntenna);
+					circle(collisionPoint.x, collisionPoint.y, 5);
+					distanceRight = this.position.dist(collisionPoint) / this.antennaLength;
+					shortestDistRight = min(distanceRight, shortestDistRight);
+				}
+
+			}
+
+			neat.population[this.index].activate([shortestDistLeft, shortestDistRight]) > 0.8 ? this.rotation++ : this.rotation--;
+
+		}
+
+	}
+
+	draw() {
+		if (this.alive) {
+			line(this.position.x, this.position.y, this.rightAntenna.x, this.rightAntenna.y);
+			line(this.position.x, this.position.y, this.leftAntenna.x, this.leftAntenna.y);
+			circle(this.position.x, this.position.y, this.radius);
 		}
 	}
 }

@@ -42,6 +42,8 @@ function init() {
 	createLines();
 	deathPoints = [];
 	agents = [];
+	pointsLastGen = [];
+	if (checkboxOn && slider.value() < 100 - STEP) slider.value(slider.value() + STEP);
 	for (var i = 0; i < POPSIZE; i++) {
 		agents.push(new Agent(i));
 	}
@@ -54,9 +56,15 @@ function createLines() {
 	];
 
 	for (var i = 0; i < 5; i++) {
-		var rd = random(0, CANVAS_HEIGHT - 80);
-		lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, max(rd, 0))]);
-		lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, max(rd + 80, 80))]);
+		if (randomGeneration) {
+			var offset = random((-CANVAS_HEIGHT / 2 + 40) / 100 * slider.value(), (CANVAS_HEIGHT / 2 - 40) / 100 * slider.value());
+			lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, CANVAS_HEIGHT / 2 - 40 + offset)]);
+			lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, CANVAS_HEIGHT / 2 + 40 + offset)]);
+		} else {
+			var offset = (CANVAS_HEIGHT / 2 - 40) / 100 * slider.value() * (Math.round(Math.random()) * 2 - 1);
+			lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, CANVAS_HEIGHT / 2 - 40 + offset)]);
+			lines.push([lines[lines.length - 2][1], createVector((i + 2) * 200, CANVAS_HEIGHT / 2 + 40 + offset)]);
+		}
 	}
 }
 
@@ -69,7 +77,8 @@ function run() {
 		}
 	} else {
 		lastAv = neat.getAverage();
-		neat.evolve().then(_ => { agentsAlive = POPSIZE; init(); time = 0; genCounter++; best = max(lastAv, best) });
+		genAvs.push(lastAv * 0.1);
+		neat.evolve().then(_ => { difficulties.push(-slider.value()); charts(); agentsAlive = POPSIZE; init(); time = 0; genCounter++; best = max(lastAv, best); });
 	}
 }
 
@@ -77,4 +86,47 @@ function drawThings() {
 	line(best, 0, best, CANVAS_HEIGHT);
 	drawLines(lines);
 	drawPoints();
+}
+
+function charts() {
+	var data = [{
+		x: genAvs.length,
+		y: genAvs,
+		name: 'Punktzahl',
+		type: 'bar'
+	},
+	{
+		x: difficulties.length,
+		y: difficulties,
+		name: 'Schwierigkeit',
+		type: 'bar'
+	},
+	];
+	var layout = {
+		title: "Durschnittliche Punktzahl",
+		xaxis: { title: "Generation" },
+		yaxis: { title: "Punktzahl" },
+		barmode: 'relative'
+	}
+
+	Plotly.newPlot('gens', data, layout);
+
+	var data = {
+		x: pointsLastGen,
+		type: 'histogram',
+	};
+	var layout = {
+		title: "Punktzahl der Agenten der letzten Generation",
+		xaxis: { title: "Erreichte Punktzahl" },
+		yaxis: { title: "Anzahl der Agenten" }
+	}
+	Plotly.newPlot('histogram', [data], layout);
+}
+
+function checkBox() {
+	if (checkboxOn) {
+		slider.attribute('disabled', '');
+	} else {
+		slider.removeAttribute('disabled');
+	}
 }

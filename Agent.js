@@ -17,16 +17,11 @@ class Agent {
 			// collider
 			for (var i in lines) {
 				if (collideLineCircleVector(lines[i][0], lines[i][1], this.position, this.radius)) {
-					this.alive = false;
-					agentsAlive--;
-					// give Score to Brain
-					neat.population[this.index].score = this.position.x;
+					this.kill();
 					deathPoints.push(this.position);
 					break;
-				} else if (time > 1100) {
-					this.alive = false;
-					agentsAlive--;
-					neat.population[this.index].score = this.position.x;
+				} else if (time > TIME) {
+					this.kill();
 					break;
 				}
 			}
@@ -79,5 +74,12 @@ class Agent {
 			line(this.position.x, this.position.y, this.leftAntenna.x, this.leftAntenna.y);
 			circle(this.position.x, this.position.y, this.radius);
 		}
+	}
+
+	kill() {
+		this.alive = false;
+		agentsAlive--;
+		pointsLastGen.push(this.position.x*0.1);
+		neat.population[this.index].score = this.position.x; // give Score to Brain
 	}
 }
